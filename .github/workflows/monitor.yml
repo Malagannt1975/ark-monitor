@@ -36,7 +36,6 @@ jobs:
           import subprocess
           import time
           import urllib.request
-          import urllib.error
 
           from datetime import datetime, timezone
           from pathlib import Path
@@ -62,7 +61,6 @@ jobs:
           # ==================================================
 
           try:
-
               old = json.loads(
                   STATE.read_text(
                       encoding="utf-8"
@@ -70,13 +68,20 @@ jobs:
               )
 
           except Exception:
-
               old = {}
 
 
           old_status = old.get(
               "status",
               "unknown"
+          )
+
+          old_last_change_at = old.get(
+              "last_change_at"
+          )
+
+          old_last_change_status = old.get(
+              "last_change_status"
           )
 
 
@@ -107,22 +112,20 @@ jobs:
                           f"{max_attempts})..."
                       )
 
-                      request = (
-                          urllib.request.Request(
-                              SERVER_LIST,
-                              headers={
-                                  "User-Agent":
-                                      "Mozilla/5.0 "
-                                      "(ARK-Monitor/1.0)",
+                      request = urllib.request.Request(
+                          SERVER_LIST,
+                          headers={
+                              "User-Agent":
+                                  "Mozilla/5.0 "
+                                  "(ARK-Monitor/1.0)",
 
-                                  "Accept":
-                                      "application/json,"
-                                      "text/plain,*/*",
+                              "Accept":
+                                  "application/json,"
+                                  "text/plain,*/*",
 
-                                  "Connection":
-                                      "close"
-                              }
-                          )
+                              "Connection":
+                                  "close"
+                          }
                       )
 
 
@@ -169,8 +172,7 @@ jobs:
 
                               print(
                                   "✅ ARK-Liste "
-                                  "erfolgreich "
-                                  "geladen."
+                                  "erfolgreich geladen."
                               )
 
                               return servers
@@ -193,10 +195,7 @@ jobs:
                       print(error)
 
 
-                      if (
-                          attempt
-                          < max_attempts
-                      ):
+                      if attempt < max_attempts:
 
                           delay = (
                               3
@@ -210,9 +209,7 @@ jobs:
                               f"{delay:.1f}s..."
                           )
 
-                          time.sleep(
-                              delay
-                          )
+                          time.sleep(delay)
 
 
               return None
@@ -222,8 +219,8 @@ jobs:
 
 
           # ==================================================
-          # WICHTIG:
-          # LISTE NICHT ERREICHBAR ≠ SERVER OFFLINE
+          # LISTE NICHT ERREICHBAR
+          # ≠ SERVER OFFLINE
           # ==================================================
 
           if servers is None:
@@ -241,9 +238,8 @@ jobs:
               )
 
               print(
-                  "ℹ️ Es wird KEINE "
-                  "Offline-Meldung "
-                  "gesendet."
+                  "ℹ️ Keine Offline-"
+                  "Meldung wird gesendet."
               )
 
               raise SystemExit(1)
@@ -256,7 +252,7 @@ jobs:
 
 
           # ==================================================
-          # ZIELSERVER SUCHEN
+          # SERVER SUCHEN
           # ==================================================
 
           server = next(
@@ -280,13 +276,11 @@ jobs:
           )
 
 
-          if server:
-
-              new_status = "online"
-
-          else:
-
-              new_status = "offline"
+          new_status = (
+              "online"
+              if server
+              else "offline"
+          )
 
 
           print(
@@ -296,7 +290,43 @@ jobs:
 
 
           # ==================================================
-          # STATUSDATEI ERSTELLEN
+          # LETZTE STATUSÄNDERUNG
+          # ==================================================
+
+          if (
+              old_status != "unknown"
+              and
+              old_status != new_status
+          ):
+
+              last_change_at = (
+                  datetime.now(
+                      timezone.utc
+                  ).isoformat()
+              )
+
+              last_change_status = (
+                  new_status
+              )
+
+              print(
+                  "🕐 Neue Statusänderung "
+                  "wird gespeichert."
+              )
+
+          else:
+
+              last_change_at = (
+                  old_last_change_at
+              )
+
+              last_change_status = (
+                  old_last_change_status
+              )
+
+
+          # ==================================================
+          # NEUE STATUSDATEI
           # ==================================================
 
           state = {
@@ -330,32 +360,11 @@ jobs:
                       else None
                   ),
 
-              "map":
-                  (
-                      server.get(
-                          "MapName"
-                      )
-                      if server
-                      else None
-                  ),
+              "last_change_at":
+                  last_change_at,
 
-              "ip":
-                  (
-                      server.get(
-                          "IP"
-                      )
-                      if server
-                      else None
-                  ),
-
-              "port":
-                  (
-                      server.get(
-                          "Port"
-                      )
-                      if server
-                      else None
-                  )
+              "last_change_status":
+                  last_change_status
           }
 
 
@@ -466,7 +475,6 @@ jobs:
                       method="POST",
 
                       headers={
-
                           "Title":
                               title,
 
@@ -526,33 +534,28 @@ jobs:
           # ==================================================
 
           print(
-              "📦 Aktualisiere "
-              "Repository..."
+              "📦 Aktualisiere Repository..."
           )
 
 
           subprocess.run(
-
               [
                   "git",
                   "fetch",
                   "origin",
                   "main"
               ],
-
               check=True
           )
 
 
           subprocess.run(
-
               [
                   "git",
                   "reset",
                   "--hard",
                   "origin/main"
               ],
-
               check=True
           )
 
@@ -572,20 +575,17 @@ jobs:
 
 
           subprocess.run(
-
               [
                   "git",
                   "config",
                   "user.name",
                   "ARK Monitor"
               ],
-
               check=True
           )
 
 
           subprocess.run(
-
               [
                   "git",
                   "config",
@@ -593,19 +593,16 @@ jobs:
                   "41898282+github-actions[bot]"
                   "@users.noreply.github.com"
               ],
-
               check=True
           )
 
 
           subprocess.run(
-
               [
                   "git",
                   "add",
                   "state.json"
               ],
-
               check=True
           )
 
@@ -613,14 +610,12 @@ jobs:
           changed = (
 
               subprocess.run(
-
                   [
                       "git",
                       "diff",
                       "--cached",
                       "--quiet"
                   ]
-
               ).returncode
 
               != 0
@@ -634,7 +629,6 @@ jobs:
           if changed:
 
               subprocess.run(
-
                   [
                       "git",
                       "commit",
@@ -642,20 +636,17 @@ jobs:
                       f"ARK status check: "
                       f"{new_status}"
                   ],
-
                   check=True
               )
 
 
               subprocess.run(
-
                   [
                       "git",
                       "push",
                       "origin",
                       "main"
                   ],
-
                   check=True
               )
 
