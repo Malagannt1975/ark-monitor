@@ -3,63 +3,117 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#101416">
+<meta name="theme-color" content="#0b1013">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ARK Monitor">
 <link rel="manifest" href="manifest.json">
 <title>ARK Monitor</title>
 <style>
-:root{color-scheme:dark}
+:root{color-scheme:dark;--bg:#0b1013;--panel:#131b20;--panel2:#182228;--text:#f4f7f8;--muted:#8d9aa1;--line:#26343b;--online:#57df92;--offline:#ff6666;--unknown:#e8b85f}
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#101416;color:#f5f7f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-.card{width:min(560px,100%);background:#171d20;border:1px solid #293236;border-radius:28px;padding:26px;box-shadow:0 20px 60px #0008}
-.eyebrow{font-size:13px;letter-spacing:.12em;opacity:.65}
-h1{font-size:27px;margin:8px 0 4px}.sub{opacity:.65;margin-bottom:24px}
-.status{font-size:46px;font-weight:800;margin:18px 0 22px}.online{color:#53d68a}.offline{color:#ff6b6b}.unknown{color:#f0bd5e}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.box{background:#20282c;border-radius:17px;padding:15px}.label{font-size:11px;letter-spacing:.08em;opacity:.5;margin-bottom:5px}.value{font-size:17px;font-weight:650;overflow-wrap:anywhere}
-.row{display:flex;gap:10px;margin-top:18px}.btn{flex:1;border:0;border-radius:15px;padding:13px 14px;font-size:15px;font-weight:700;background:#2a3439;color:white}
-.footer{font-size:12px;opacity:.5;margin-top:18px;line-height:1.45}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;padding:max(22px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(22px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));background:radial-gradient(circle at top,rgba(71,111,128,.18),transparent 35%),linear-gradient(180deg,#0b1013 0%,#0d1418 100%)}
+.card{width:min(100%,480px);background:linear-gradient(180deg,rgba(22,31,36,.98),rgba(16,23,27,.98));border:1px solid var(--line);border-radius:30px;padding:28px 22px 22px;box-shadow:0 24px 70px rgba(0,0,0,.45);text-align:center}
+.brand{font-size:13px;font-weight:800;letter-spacing:.18em;color:#aebbc1;margin-bottom:24px}
+.status{font-size:44px;line-height:1;font-weight:900;letter-spacing:-.03em;margin:6px 0 18px}
+.status.online{color:var(--online)} .status.offline{color:var(--offline)} .status.unknown{color:var(--unknown)}
+.server{font-size:20px;line-height:1.25;font-weight:750;overflow-wrap:anywhere;margin-bottom:26px}
+.section{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:18px 16px;margin-top:12px}
+.label{font-size:11px;letter-spacing:.12em;font-weight:800;color:var(--muted);margin-bottom:8px}
+.value{font-size:23px;font-weight:800;line-height:1.25}
+.value.small{font-size:18px;font-weight:750}
+.sub{color:var(--muted);font-size:14px;margin-top:6px;line-height:1.35}
+button{width:100%;margin-top:16px;border:1px solid #34464f;border-radius:17px;background:#202c32;color:white;font-size:16px;font-weight:800;padding:14px 16px}
+.error{margin-top:14px;font-size:13px;color:#ff9b9b;display:none}
 </style>
 </head>
 <body>
 <main class="card">
-  <div class="eyebrow">🦖 ARK SERVER MONITOR</div>
-  <h1>EU-PVE-Astraeos5994</h1>
-  <div class="sub">Official ASA • PvE</div>
-  <div id="status" class="status unknown">⏳ LADEN…</div>
-  <div class="grid">
-    <div class="box"><div class="label">SPIELER</div><div id="players" class="value">—</div></div>
-    <div class="box"><div class="label">MAP</div><div id="map" class="value">—</div></div>
-    <div class="box"><div class="label">IP / PORT</div><div id="ip" class="value">—</div></div>
-    <div class="box"><div class="label">LETZTE PRÜFUNG</div><div id="checked" class="value">—</div></div>
-  </div>
-  <div class="row"><button class="btn" onclick="loadState()">↻ Aktualisieren</button></div>
-  <div class="footer">Gefunden = ONLINE, nicht gefunden = OFFLINE. Hintergrundprüfung alle 5 Minuten.</div>
+<div class="brand">🦖 ARK MONITOR</div>
+<div id="status" class="status unknown">⏳ LADEN…</div>
+<div id="serverName" class="server">EU-PVE-Astraeos5994</div>
+
+<section class="section">
+  <div class="label">👥 SPIELER</div>
+  <div id="players" class="value">—</div>
+</section>
+
+<section class="section">
+  <div class="label">🕐 LETZTE PRÜFUNG</div>
+  <div id="checkedRelative" class="value small">—</div>
+  <div id="checkedExact" class="sub">—</div>
+</section>
+
+<section class="section">
+  <div class="label">LETZTE STATUSÄNDERUNG</div>
+  <div id="changeText" class="value small">—</div>
+  <div id="changeExact" class="sub">—</div>
+</section>
+
+<button onclick="loadState()">↻ Aktualisieren</button>
+<div id="error" class="error">Status konnte gerade nicht geladen werden.</div>
 </main>
+
 <script>
-function setStatus(s){
+const DEFAULT_SERVER="EU-PVE-Astraeos5994";
+let currentState=null;
+
+function setStatus(status){
   const e=document.getElementById("status");
-  e.className="status "+(s||"unknown");
-  e.textContent=s==="online"?"🟢 ONLINE":s==="offline"?"🔴 OFFLINE":"⏳ UNBEKANNT";
+  e.className="status "+(status||"unknown");
+  e.textContent=status==="online"?"🟢 ONLINE":status==="offline"?"🔴 OFFLINE":"⏳ UNBEKANNT";
 }
+
+function relativeTime(iso){
+  if(!iso) return "—";
+  const d=new Date(iso);
+  const seconds=Math.max(0,Math.floor((Date.now()-d.getTime())/1000));
+  if(seconds<45) return "gerade eben";
+  const minutes=Math.floor(seconds/60);
+  if(minutes<60) return `vor ${minutes} ${minutes===1?"Minute":"Minuten"}`;
+  const hours=Math.floor(minutes/60);
+  if(hours<24) return `vor ${hours} ${hours===1?"Stunde":"Stunden"}`;
+  const days=Math.floor(hours/24);
+  return `vor ${days} ${days===1?"Tag":"Tagen"}`;
+}
+
+function exactTime(iso){
+  if(!iso) return "—";
+  return new Date(iso).toLocaleString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+}
+
+function render(s){
+  currentState=s;
+  document.getElementById("serverName").textContent=s.server||DEFAULT_SERVER;
+  setStatus(s.status);
+  document.getElementById("players").textContent=(s.status==="online"&&s.players!=null)?`${s.players} / ${s.max_players??"?"}`:"—";
+  document.getElementById("checkedRelative").textContent=relativeTime(s.checked_at);
+  document.getElementById("checkedExact").textContent=exactTime(s.checked_at);
+
+  const changedStatus=s.last_change_status||s.status;
+  document.getElementById("changeText").textContent=s.last_change_at
+    ? (changedStatus==="online"?"🟢 Wieder online":"🔴 Offline")
+    : "Noch keine Änderung gespeichert";
+  document.getElementById("changeExact").textContent=s.last_change_at?exactTime(s.last_change_at):"—";
+}
+
 async function loadState(){
+  const error=document.getElementById("error");
+  error.style.display="none";
   try{
     const r=await fetch("state.json?ts="+Date.now(),{cache:"no-store"});
     if(!r.ok) throw new Error("HTTP "+r.status);
-    const s=await r.json();
-    setStatus(s.status);
-    document.getElementById("players").textContent =
-      s.status==="online" && s.players!=null ? `${s.players} / ${s.max_players ?? "?"}` : "—";
-    document.getElementById("map").textContent=s.map || "—";
-    document.getElementById("ip").textContent=s.ip ? `${s.ip}:${s.port ?? "?"}` : "—";
-    document.getElementById("checked").textContent=s.checked_at
-      ? new Date(s.checked_at).toLocaleString("de-AT",{dateStyle:"short",timeStyle:"short"})
-      : "—";
+    render(await r.json());
   }catch(e){
-    setStatus("unknown");
-    document.getElementById("checked").textContent="Fehler";
+    console.error(e);
+    error.style.display="block";
+    if(!currentState) setStatus("unknown");
   }
 }
+
 loadState();
+setInterval(()=>{if(currentState) document.getElementById("checkedRelative").textContent=relativeTime(currentState.checked_at)},30000);
 setInterval(loadState,60000);
 </script>
 </body>
