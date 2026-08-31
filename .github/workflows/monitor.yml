@@ -3,6 +3,7 @@ name: ARK Monitor
 on:
   schedule:
     - cron: "*/5 * * * *"
+
   workflow_dispatch:
 
 permissions:
@@ -15,15 +16,23 @@ concurrency:
 jobs:
   monitor:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v5
+      - name: Repository laden
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: ARK-Status prüfen
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+
         run: |
           python3 - <<'PY'
-          import json, os, subprocess, urllib.request
+          import json
+          import os
+          import subprocess
+          import urllib.request
           from datetime import datetime, timezone
           from pathlib import Path
 
@@ -31,68 +40,291 @@ jobs:
           TARGET = "EU-PVE-Astraeos5994"
           STATE = Path("state.json")
 
-          req = urllib.request.Request(SERVER_LIST, headers={"User-Agent":"ARK-Monitor/1.0"})
+          print("🦖 ARK Monitor startet...")
+          print(f"Server: {TARGET}")
+
+          # --------------------------------------------------
+          # Offizielle ASA-Serverliste laden
+          # --------------------------------------------------
+
+          req = urllib.request.Request(
+              SERVER_LIST,
+              headers={
+                  "User-Agent": "ARK-Monitor-GitHubActions/1.0"
+              }
+          )
+
           with urllib.request.urlopen(req, timeout=30) as response:
               payload = json.load(response)
 
-          servers = payload if isinstance(payload, list) else payload.get("servers", payload.get("Servers", []))
-          if not isinstance(servers, list):
-              raise RuntimeError("Unbekanntes Format der ASA-Serverliste")
+          servers = (
+              payload
+              if isinstance(payload, list)
+              else payload.get("servers", payload.get("Servers", []))
+          )
 
-          server = next((s for s in servers if str(s.get("Name","")).lower() == TARGET.lower()), None)
+          if not isinstance(servers, list):
+              raise RuntimeError(
+                  "Unbekanntes Format der offiziellen ASA-Serverliste"
+              )
+
+          print(f"Serverliste geladen: {len(servers)} Einträge")
+
+          # --------------------------------------------------
+          # Zielserver suchen
+          # --------------------------------------------------
+
+          server = next(
+              (
+                  s for s in servers
+                  if str(s.get("Name", "")).lower()
+                  == TARGET.lower()
+              ),
+              None
+          )
+
           new_status = "online" if server else "offline"
 
+          print(f"Aktueller Status: {new_status}")
+
+          # --------------------------------------------------
+          # Alten Status laden
+          # --------------------------------------------------
+
           try:
-              old = json.loads(STATE.read_text(encoding="utf-8"))
+              old = json.loads(
+                  STATE.read_text(encoding="utf-8")
+              )
           except Exception:
               old = {}
 
           old_status = old.get("status", "unknown")
 
+          print(f"Vorheriger Status: {old_status}")
+
+          # --------------------------------------------------
+          # Neue Statusdatei erzeugen
+          # --------------------------------------------------
+
           state = {
               "server": TARGET,
               "status": new_status,
-              "checked_at": datetime.now(timezone.utc).isoformat(),
-              "players": server.get("NumPlayers") if server else None,
-              "max_players": server.get("MaxPlayers") if server else None,
-              "map": server.get("MapName") if server else None,
-              "ip": server.get("IP") if server else None,
-              "port": server.get("Port") if server else None
+              "checked_at": datetime.now(
+                  timezone.utc
+              ).isoformat(),
+
+              "players": (
+                  server.get("NumPlayers")
+                  if server else None
+              ),
+
+              "max_players": (
+                  server.get("MaxPlayers")
+                  if server else None
+              ),
+
+              "map": (
+                  server.get("MapName")
+                  if server else None
+              ),
+
+              "ip": (
+                  server.get("IP")
+                  if server else None
+              ),
+
+              "port": (
+                  server.get("Port")
+                  if server else None
+              )
           }
-          STATE.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-          topic = os.environ.get("NTFY_TOPIC","").strip()
+          STATE.write_text(
+              json.dumps(
+                  state,
+                  indent=2,
+                  ensure_ascii=False
+              ) + "\n",
+              encoding="utf-8"
+          )
 
-          if topic and old_status not in ("unknown", new_status):
+          # --------------------------------------------------
+          # Push-Mitteilung nur bei Statuswechsel
+          # --------------------------------------------------
+
+          topic = os.environ.get(
+              "NTFY_TOPIC",
+              ""
+          ).strip()
+
+          if (
+              topic
+              and old_status != "unknown"
+              and old_status != new_status
+          ):
+
+              print(
+                  f"⚠️ Statusänderung: "
+                  f"{old_status} → {new_status}"
+              )
+
               if new_status == "offline":
+
                   title = "ARK Server OFFLINE"
-                  message = f"🔴 {TARGET} ist offline."
+
+                  message = (
+                      f"🔴 {TARGET} ist offline."
+                  )
+
                   tags = "rotating_light"
+
               else:
+
                   title = "ARK Server ONLINE"
+
                   extra = ""
-                  if state["players"] is not None and state["max_players"] is not None:
-                      extra = f" Spieler: {state['players']}/{state['max_players']}."
-                  message = f"🟢 {TARGET} ist wieder online.{extra}"
+
+                  if (
+                      state["players"] is not None
+                      and state["max_players"] is not None
+                  ):
+                      extra = (
+                          f" Spieler: "
+                          f"{state['players']}/"
+                          f"{state['max_players']}."
+                      )
+
+                  message = (
+                      f"🟢 {TARGET} "
+                      f"ist wieder online."
+                      f"{extra}"
+                  )
+
                   tags = "white_check_mark"
 
-              nreq = urllib.request.Request(
+              notify_request = urllib.request.Request(
                   f"https://ntfy.sh/{topic}",
                   data=message.encode("utf-8"),
                   method="POST",
-                  headers={"Title":title,"Priority":"5","Tags":tags}
+                  headers={
+                      "Title": title,
+                      "Priority": "5",
+                      "Tags": tags
+                  }
               )
-              with urllib.request.urlopen(nreq, timeout=20):
+
+              with urllib.request.urlopen(
+                  notify_request,
+                  timeout=20
+              ):
                   pass
 
-          subprocess.run(["git","config","user.name","ARK Monitor"], check=True)
-          subprocess.run(["git","config","user.email","41898282+github-actions[bot]@users.noreply.github.com"], check=True)
-          subprocess.run(["git","add","state.json"], check=True)
+              print("🔔 Push-Mitteilung gesendet.")
 
-          changed = subprocess.run(["git","diff","--cached","--quiet"]).returncode != 0
+          elif old_status == "unknown":
+
+              print(
+                  "Erster Lauf – "
+                  "keine Benachrichtigung."
+              )
+
+          else:
+
+              print(
+                  "Status unverändert – "
+                  "keine Benachrichtigung."
+              )
+
+          # --------------------------------------------------
+          # state.json zurück ins Repository schreiben
+          # --------------------------------------------------
+
+          subprocess.run(
+              [
+                  "git",
+                  "config",
+                  "user.name",
+                  "ARK Monitor"
+              ],
+              check=True
+          )
+
+          subprocess.run(
+              [
+                  "git",
+                  "config",
+                  "user.email",
+                  "41898282+github-actions[bot]"
+                  "@users.noreply.github.com"
+              ],
+              check=True
+          )
+
+          subprocess.run(
+              [
+                  "git",
+                  "add",
+                  "state.json"
+              ],
+              check=True
+          )
+
+          changed = (
+              subprocess.run(
+                  [
+                      "git",
+                      "diff",
+                      "--cached",
+                      "--quiet"
+                  ]
+              ).returncode
+              != 0
+          )
+
           if changed:
-              subprocess.run(["git","commit","-m",f"ARK status check: {new_status}"], check=True)
-              subprocess.run(["git","push"], check=True)
 
-          print(f"{TARGET}: {new_status}")
+              subprocess.run(
+                  [
+                      "git",
+                      "commit",
+                      "-m",
+                      f"ARK status check: {new_status}"
+                  ],
+                  check=True
+              )
+
+              # Aktuellsten Stand von main holen.
+              # Verhindert "fetch first"-Fehler.
+              subprocess.run(
+                  [
+                      "git",
+                      "pull",
+                      "--rebase",
+                      "origin",
+                      "main"
+                  ],
+                  check=True
+              )
+
+              subprocess.run(
+                  [
+                      "git",
+                      "push",
+                      "origin",
+                      "main"
+                  ],
+                  check=True
+              )
+
+              print(
+                  "✅ state.json wurde aktualisiert."
+              )
+
+          else:
+
+              print(
+                  "Keine Änderung an state.json."
+              )
+
+          print("✅ ARK Monitor fertig.")
           PY
