@@ -1,10 +1,10 @@
 {
   "server": "EU-PVE-Astraeos5994",
-  "status": "unknown",
-  "checked_at": null,
-  "players": null,
-  "max_players": null,
-  "map": null,
-  "ip": null,
-  "port": null
+  "status": "online",
+  "checked_at": "2026-08-31T20:07:41.265996+00:00",
+  "players": 35,
+  "max_players": 70,
+  "map": "Astraeos_WP",
+  "ip": "5.62.116.58",
+  "port": 7783
 }
