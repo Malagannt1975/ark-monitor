@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101416">
+<link rel="manifest" href="manifest.json">
+<title>ARK Monitor</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#101416;color:#f5f7f8;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.card{width:min(560px,100%);background:#171d20;border:1px solid #293236;border-radius:28px;padding:26px;box-shadow:0 20px 60px #0008}
+.eyebrow{font-size:13px;letter-spacing:.12em;opacity:.65}
+h1{font-size:27px;margin:8px 0 4px}.sub{opacity:.65;margin-bottom:24px}
+.status{font-size:46px;font-weight:800;margin:18px 0 22px}.online{color:#53d68a}.offline{color:#ff6b6b}.unknown{color:#f0bd5e}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{background:#20282c;border-radius:17px;padding:15px}.label{font-size:11px;letter-spacing:.08em;opacity:.5;margin-bottom:5px}.value{font-size:17px;font-weight:650;overflow-wrap:anywhere}
+.row{display:flex;gap:10px;margin-top:18px}.btn{flex:1;border:0;border-radius:15px;padding:13px 14px;font-size:15px;font-weight:700;background:#2a3439;color:white}
+.footer{font-size:12px;opacity:.5;margin-top:18px;line-height:1.45}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="eyebrow">🦖 ARK SERVER MONITOR</div>
+  <h1>EU-PVE-Astraeos5994</h1>
+  <div class="sub">Official ASA • PvE</div>
+  <div id="status" class="status unknown">⏳ LADEN…</div>
+  <div class="grid">
+    <div class="box"><div class="label">SPIELER</div><div id="players" class="value">—</div></div>
+    <div class="box"><div class="label">MAP</div><div id="map" class="value">—</div></div>
+    <div class="box"><div class="label">IP / PORT</div><div id="ip" class="value">—</div></div>
+    <div class="box"><div class="label">LETZTE PRÜFUNG</div><div id="checked" class="value">—</div></div>
+  </div>
+  <div class="row"><button class="btn" onclick="loadState()">↻ Aktualisieren</button></div>
+  <div class="footer">Gefunden = ONLINE, nicht gefunden = OFFLINE. Hintergrundprüfung alle 5 Minuten.</div>
+</main>
+<script>
+function setStatus(s){
+  const e=document.getElementById("status");
+  e.className="status "+(s||"unknown");
+  e.textContent=s==="online"?"🟢 ONLINE":s==="offline"?"🔴 OFFLINE":"⏳ UNBEKANNT";
+}
+async function loadState(){
+  try{
+    const r=await fetch("state.json?ts="+Date.now(),{cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const s=await r.json();
+    setStatus(s.status);
+    document.getElementById("players").textContent =
+      s.status==="online" && s.players!=null ? `${s.players} / ${s.max_players ?? "?"}` : "—";
+    document.getElementById("map").textContent=s.map || "—";
+    document.getElementById("ip").textContent=s.ip ? `${s.ip}:${s.port ?? "?"}` : "—";
+    document.getElementById("checked").textContent=s.checked_at
+      ? new Date(s.checked_at).toLocaleString("de-AT",{dateStyle:"short",timeStyle:"short"})
+      : "—";
+  }catch(e){
+    setStatus("unknown");
+    document.getElementById("checked").textContent="Fehler";
+  }
+}
+loadState();
+setInterval(loadState,60000);
+</script>
+</body>
+</html>
