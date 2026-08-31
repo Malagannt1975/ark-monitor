@@ -1,0 +1,66 @@
+name: ARK Push Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: iPhone Push testen
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+
+        run: |
+          python3 - <<'PY'
+
+          import os
+          import urllib.request
+
+          topic = os.environ.get(
+              "NTFY_TOPIC",
+              ""
+          ).strip()
+
+          if not topic:
+              raise RuntimeError(
+                  "NTFY_TOPIC wurde nicht gefunden. "
+                  "Prüfe GitHub Settings → Secrets and variables → Actions."
+              )
+
+          print("🔔 Sende Test-Push...")
+          print("Topic ist vorhanden.")
+
+          url = f"https://ntfy.sh/{topic}"
+
+          message = (
+              "🧪 Test erfolgreich!\n\n"
+              "Dein ARK Monitor kann dein iPhone erreichen.\n\n"
+              "🦖 EU-PVE-Astraeos5994"
+          )
+
+          request = urllib.request.Request(
+              url,
+              data=message.encode("utf-8"),
+              method="POST",
+              headers={
+                  "Title": "ARK Monitor Test",
+                  "Priority": "5",
+                  "Tags": "white_check_mark"
+              }
+          )
+
+          with urllib.request.urlopen(
+              request,
+              timeout=30
+          ) as response:
+
+              print(
+                  "ntfy Antwort:",
+                  response.status
+              )
+
+          print("✅ Test-Push wurde gesendet.")
+
+          PY
