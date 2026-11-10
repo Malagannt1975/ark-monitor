@@ -1,9 +1,9 @@
 {
   "server": "EU-PVE-Astraeos5994",
-  "status": "offline",
-  "checked_at": "2026-11-10T10:12:06.885360+00:00",
-  "players": null,
-  "max_players": null,
-  "last_change_at": "2026-11-10T10:12:06.885338+00:00",
-  "last_change_status": "offline"
+  "status": "online",
+  "checked_at": "2026-11-10T17:47:31.456550+00:00",
+  "players": 31,
+  "max_players": 70,
+  "last_change_at": "2026-11-10T17:47:31.456520+00:00",
+  "last_change_status": "online"
 }
